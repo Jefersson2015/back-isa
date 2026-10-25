@@ -1,25 +1,18 @@
-# Usar una imagen base con Java
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-jammy
 
-# Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar el archivo Maven wrapper
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Descargar dependencias
-RUN ./mvnw dependency:go-offline
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -B
 
-# Copiar el código fuente
 COPY src src
 
-# Construir la aplicación
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw clean package -DskipTests -B
 
-# Exponer el puerto
 EXPOSE 8080
 
-# Ejecutar la aplicación
 CMD ["java", "-jar", "target/elite-backend-0.0.1-SNAPSHOT.jar"]
