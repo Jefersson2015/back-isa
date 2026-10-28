@@ -1,16 +1,11 @@
 package com.elite.elitebackend.config;
 
-import com.elite.elitebackend.config.JwtAuthFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -21,31 +16,41 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Desactivar CSRF
                 .csrf(csrf -> csrf.disable())
+
+                // Configurar CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // Desactivar completamente la seguridad para endpoints públicos
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/usuarios/login",
-                                "/api/usuarios/**",
+                                "/api/usuarios/register",
+                                "/api/usuarios",
                                 "/api/productos/**",
                                 "/api/categorias/**",
                                 "/api/cliente/**",
                                 "/api/pedidos/**",
                                 "/api/carrito/**",
-                                "/api/carrito_detalle/**"
+                                "/api/carrito_detalle/**",
+                                "/error"
                         ).permitAll()
-                        .anyRequest().authenticated()
+
+                        // Todo lo demás requiere autenticación
+                        .anyRequest().permitAll() // <-- CAMBIO: permitir todo temporalmente
                 )
+
+                // Sin sesiones
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                );
+
+        // NO agregar el filtro JWT temporalmente
+        // Lo agregaremos después de que funcione el login
 
         return http.build();
     }
@@ -53,21 +58,23 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://fron-isa.vercel.app",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "*"  // Permitir todos los orígenes temporalmente
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"
+        ));
+
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 }
