@@ -19,38 +19,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desactivar CSRF
+                // 1. Desactivar CSRF (obligatorio para APIs REST con Postman/Frontend)
                 .csrf(csrf -> csrf.disable())
 
-                // Configurar CORS
+                // 2. Configurar CORS correctamente
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // Desactivar completamente la seguridad para endpoints públicos
+                // 3. Permitir acceso PÚBLICO a todas las rutas de la API temporalmente
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/usuarios/login",
-                                "/api/usuarios/register",
-                                "/api/usuarios",
-                                "/api/productos/**",
-                                "/api/categorias/**",
-                                "/api/cliente/**",
-                                "/api/pedidos/**",
-                                "/api/carrito/**",
-                                "/api/carrito_detalle/**",
-                                "/error"
-                        ).permitAll()
-
-                        // Todo lo demás requiere autenticación
-                        .anyRequest().permitAll() // <-- CAMBIO: permitir todo temporalmente
+                        .requestMatchers("/api/usuarios/**").permitAll()
+                        .requestMatchers("/api/productos/**").permitAll()
+                        .requestMatchers("/api/categorias/**").permitAll()
+                        .requestMatchers("/api/cliente/**").permitAll()
+                        .requestMatchers("/api/pedidos/**").permitAll()
+                        .requestMatchers("/api/carrito/**").permitAll()
+                        .requestMatchers("/api/carrito_detalle/**").permitAll()
+                        .anyRequest().permitAll() // <-- Permite todo para descartar que sea seguridad
                 )
 
-                // Sin sesiones
+                // 4. No usar sesiones HTTP (Stateless para JWT)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
-
-        // NO agregar el filtro JWT temporalmente
-        // Lo agregaremos después de que funcione el login
+        // NOTA: Hemos quitado el .addFilterBefore del JWT temporalmente
+        // para asegurar que el login pase sin bloqueos.
 
         return http.build();
     }
@@ -59,19 +51,20 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
+        // IMPORTANTE: NO usar "*" aquí porque allowCredentials es true
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://fron-isa.vercel.app",
-                "http://localhost:3000",
-                "*"  // Permitir todos los orígenes temporalmente
+                "http://localhost:3000"
         ));
 
         configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
         ));
 
         configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // Permitir que el frontend envíe el token JWT
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
