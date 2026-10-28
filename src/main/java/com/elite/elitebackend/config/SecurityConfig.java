@@ -16,47 +16,36 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Autowired
-    private JwtAuthFilter jwtAuthenticationFilter;
+    private JwtAuthFilter jwtAuthFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Configurar CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // Desactivar CSRF (necesario para APIs REST)
                 .csrf(csrf -> csrf.disable())
-
-                // Configurar autorización de rutas
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Permitir acceso público a estas rutas
                         .requestMatchers(
                                 "/api/usuarios/login",
-                                "/api/usuarios",
+                                "/api/usuarios/**",
                                 "/api/productos/**",
                                 "/api/categorias/**",
                                 "/api/cliente/**",
-                                "/api/pedidos/**"
+                                "/api/pedidos/**",
+                                "/api/carrito/**",
+                                "/api/carrito_detalle/**"
                         ).permitAll()
-
-                        // Todas las demás rutas requieren autenticación
                         .anyRequest().authenticated()
                 )
-
-                // Configurar sesión stateless (sin sesiones HTTP)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // Agregar filtro JWT
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -64,32 +53,21 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // Permitir peticiones desde Vercel y localhost
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://fron-isa.vercel.app",
                 "http://localhost:3000"
         ));
-
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
-        ));
-
-        // Headers permitidos
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Permitir credenciales (tokens JWT)
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }
